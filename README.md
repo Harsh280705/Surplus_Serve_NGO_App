@@ -54,7 +54,7 @@ There is no efficient real-time system to connect food donors with NGOs for quic
 
 ## 🏗️ Architecture Overview
 
-<img width="2606" height="2490" alt="FINAL IMAGE" src="https://github.com/user-attachments/assets/c722e426-0c97-46b1-b618-26827b6f9bf3" />
+<img width="1536" height="1024" alt="Image" src="https://github.com/user-attachments/assets/b544a5aa-e3ef-407a-ba05-e74440acb6ee" />
 
 ---
 
