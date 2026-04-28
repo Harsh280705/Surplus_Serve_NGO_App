@@ -1,0 +1,3182 @@
+// main.dart - Complete Enhanced SurplusServe App
+
+// Complete food donation platform with improved architecture, UI/UX, and messaging system
+
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
+
+// ================================
+// CONSTANTS & THEME
+// ================================
+
+const Color kPrimaryColor = Color(0xFF2E7D32);
+const Color kPrimaryLight = Color(0xFF4CAF50);
+const Color kPrimaryDark = Color(0xFF1B5E20);
+const Color kAccentColor = Color(0xFFFF6B6B);
+const Color kSecondaryColor = Color(0xFF0288D1);
+const Color kBackgroundColor = Color(0xFFF5F5F5);
+const Color kCardColor = Colors.white;
+const Color kTextPrimary = Color(0xFF212121);
+const Color kTextSecondary = Color(0xFF757575);
+
+final ThemeData appTheme = ThemeData(
+  primarySwatch: Colors.green,
+  primaryColor: kPrimaryColor,
+  brightness: Brightness.light,
+  scaffoldBackgroundColor: kBackgroundColor,
+  cardTheme: CardThemeData(
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  ),
+);
+// ================================
+// MODELS & DATA CLASSES
+// ================================
+
+class UserProfile {
+  final String id;
+  final String name;
+  final String email;
+  final String phone;
+  final String address;
+  final String role;
+  final DateTime createdAt;
+
+  UserProfile({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.address,
+    required this.role,
+    required this.createdAt,
+  });
+
+  factory UserProfile.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return UserProfile(
+      id: doc.id,
+      name: data['name'] ?? '',
+      email: data['email'] ?? '',
+      phone: data['phone'] ?? '',
+      address: data['address'] ?? '',
+      role: data['role'] ?? 'NGO',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+}
+
+class Donation {
+  final String id;
+  final String itemName;
+  final String count;
+  final String servingCapacity;
+  final String description;
+  final String createdBy;
+  final String status;
+  final DateTime createdAt;
+  final String createdByName;
+  final String createdByPhone;
+
+  Donation({
+    required this.id,
+    required this.itemName,
+    required this.count,
+    required this.servingCapacity,
+    required this.description,
+    required this.createdBy,
+    required this.status,
+    required this.createdAt,
+    this.createdByName = '',
+    this.createdByPhone = '',
+  });
+
+  factory Donation.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Donation(
+      id: doc.id,
+      itemName: data['itemName'] ?? '',
+      count: data['count'] ?? '',
+      servingCapacity: data['servingCapacity'] ?? '',
+      description: data['description'] ?? '',
+      createdBy: data['createdBy'] ?? '',
+      status: data['status'] ?? 'available',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdByName: data['createdByName'] ?? '',
+      createdByPhone: data['createdByPhone'] ?? '',
+    );
+  }
+}
+
+class ChatMessage {
+  final String id;
+  final String senderId;
+  final String receiverId;
+  final String message;
+  final DateTime timestamp;
+  final String donationId;
+  final bool isRead;
+  final String senderName;
+
+  ChatMessage({
+    required this.id,
+    required this.senderId,
+    required this.receiverId,
+    required this.message,
+    required this.timestamp,
+    required this.donationId,
+    this.isRead = false,
+    this.senderName = '',
+  });
+
+  factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ChatMessage(
+      id: doc.id,
+      senderId: data['senderId'] ?? '',
+      receiverId: data['receiverId'] ?? '',
+      message: data['message'] ?? '',
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      donationId: data['donationId'] ?? '',
+      isRead: data['isRead'] ?? false,
+      senderName: data['senderName'] ?? '',
+    );
+  }
+}
+
+class ChatRoom {
+  final String id;
+  final String donationId;
+  final String donationTitle;
+  final String otherUserId;
+  final String otherUserName;
+  final String lastMessage;
+  final DateTime lastMessageTime;
+  final int unreadCount;
+
+  ChatRoom({
+    required this.id,
+    required this.donationId,
+    required this.donationTitle,
+    required this.otherUserId,
+    required this.otherUserName,
+    required this.lastMessage,
+    required this.lastMessageTime,
+    this.unreadCount = 0,
+  });
+}
+
+// ================================
+// UTILITY CLASSES & VALIDATORS
+// ================================
+
+class Validators {
+  static String? validateEmail(String? email) {
+    if (email == null || email.isEmpty) {
+      return 'Email is required';
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  static String? validatePassword(String? password) {
+    if (password == null || password.isEmpty) {
+      return 'Password is required';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
+  static String? validatePhone(String? phone) {
+    if (phone == null || phone.isEmpty) {
+      return 'Phone number is required';
+    }
+    if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
+      return 'Please enter a valid 10-digit phone number';
+    }
+    return null;
+  }
+
+  static String? validateRequired(String? value, String fieldName) {
+    if (value == null || value.trim().isEmpty) {
+      return '$fieldName is required';
+    }
+    return null;
+  }
+}
+
+class AppConstants {
+  static const String appName = 'SurplusServe';
+  static const String appVersion = '2.0';
+  static const double borderRadius = 12.0;
+  static const double spacing = 16.0;
+  static const double smallSpacing = 8.0;
+}
+
+// ================================
+// SERVICES
+// ================================
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  User? get currentUser => _auth.currentUser;
+  String? get currentUserId => _auth.currentUser?.uid;
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  Future<UserCredential> signUp(String email, String password) async {
+    try {
+      return await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  Future<UserCredential> signIn(String email, String password) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
+  Future<UserProfile?> getCurrentUserProfile() async {
+    final uid = currentUserId;
+    if (uid == null) return null;
+
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (!doc.exists) return null;
+      return UserProfile.fromFirestore(doc);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _handleAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No user found with this email address.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'email-already-in-use':
+        return 'An account already exists with this email.';
+      case 'weak-password':
+        return 'Password is too weak.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      default:
+        return e.message ?? 'An authentication error occurred.';
+    }
+  }
+}
+
+class FirestoreService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ----------------------------
+  // USERS
+  // ----------------------------
+  Future<void> createUserProfile(String uid, Map<String, dynamic> data) async {
+    await _db.collection('users').doc(uid).set({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ----------------------------
+  // DONATIONS
+  // ----------------------------
+  Future<DocumentReference> addDonation(Map<String, dynamic> data) async {
+    return await _db.collection('donations').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot> getAllDonations() {
+    return _db
+        .collection('donations')
+        .where('category', isEqualTo: 'Food')
+        .where('status', isEqualTo: 'available')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> getUserDonations(String userId) {
+    return _db
+        .collection('donations')
+        .where('createdBy', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Future<void> updateDonation(String docId, Map<String, dynamic> data) async {
+    await _db.collection('donations').doc(docId).update({
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteDonation(String docId) async {
+    await _db.collection('donations').doc(docId).delete();
+  }
+
+  // ----------------------------
+  // MESSAGES
+  // ----------------------------
+  Future<DocumentReference> sendMessage(Map<String, dynamic> data) async {
+    return await _db.collection('messages').add({
+      ...data,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  }
+
+  /// ✅ Get chat messages between two users for a donation (no Filter.or)
+  Stream<List<QueryDocumentSnapshot>> getChatMessages(
+    String userId,
+    String otherUserId,
+    String donationId,
+  ) {
+    final sentMessages = _db
+        .collection('messages')
+        .where('donationId', isEqualTo: donationId)
+        .where('senderId', isEqualTo: userId)
+        .where('receiverId', isEqualTo: otherUserId)
+        .orderBy('timestamp', descending: false)
+        .snapshots();
+
+    final receivedMessages = _db
+        .collection('messages')
+        .where('donationId', isEqualTo: donationId)
+        .where('senderId', isEqualTo: otherUserId)
+        .where('receiverId', isEqualTo: userId)
+        .orderBy('timestamp', descending: false)
+        .snapshots();
+
+    return Rx.combineLatest2<
+      QuerySnapshot,
+      QuerySnapshot,
+      List<QueryDocumentSnapshot>
+    >(sentMessages, receivedMessages, (sent, received) {
+      final allDocs = [...sent.docs, ...received.docs];
+      allDocs.sort((a, b) {
+        final tsA = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+        final tsB = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+        return tsA.compareTo(tsB);
+      });
+      return allDocs;
+    });
+  }
+
+  /// ✅ Get all chat rooms for a user (no Filter.or)
+  Stream<List<QueryDocumentSnapshot>> getUserChatRooms(String userId) {
+    final sentChats = _db
+        .collection('messages')
+        .where('senderId', isEqualTo: userId)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+
+    final receivedChats = _db
+        .collection('messages')
+        .where('receiverId', isEqualTo: userId)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+
+    return Rx.combineLatest2<
+      QuerySnapshot,
+      QuerySnapshot,
+      List<QueryDocumentSnapshot>
+    >(sentChats, receivedChats, (sent, received) {
+      final allDocs = [...sent.docs, ...received.docs];
+      allDocs.sort((a, b) {
+        final tsA = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+        final tsB = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+        return tsB.compareTo(tsA); // latest first
+      });
+      return allDocs;
+    });
+  }
+
+  Future<void> markMessageAsRead(String messageId) async {
+    await _db.collection('messages').doc(messageId).update({'isRead': true});
+  }
+
+  // ----------------------------
+  // HELPERS
+  // ----------------------------
+  Future<UserProfile?> getUserProfile(String userId) async {
+    try {
+      final doc = await _db.collection('users').doc(userId).get();
+      if (!doc.exists) return null;
+      return UserProfile.fromFirestore(doc);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<Donation?> getDonation(String donationId) async {
+    try {
+      final doc = await _db.collection('donations').doc(donationId).get();
+      if (!doc.exists) return null;
+      return Donation.fromFirestore(doc);
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+class LocationService {
+  static Future<Position?> getCurrentPosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return null;
+    }
+
+    if (permission == LocationPermission.deniedForever) return null;
+
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+  }
+}
+
+// ================================
+// ENTRY POINT
+// ================================
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const SurplusServeApp());
+}
+
+class SurplusServeApp extends StatelessWidget {
+  const SurplusServeApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      theme: appTheme,
+      home: const AuthGate(),
+    );
+  }
+}
+
+// ================================
+// AUTHENTICATION GATE
+// ================================
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: AuthService().authStateChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading...', style: TextStyle(fontSize: 16)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasData) {
+          return const DashboardPage();
+        }
+
+        return const LoginPage();
+      },
+    );
+  }
+}
+
+// ================================
+// REUSABLE UI COMPONENTS
+// ================================
+
+class AppCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets? padding;
+  final Color? color;
+  final double? elevation;
+
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.color,
+    this.elevation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: elevation ?? 4,
+      color: color ?? kCardColor,
+      child: Padding(
+        padding: padding ?? const EdgeInsets.all(16),
+        child: child,
+      ),
+    );
+  }
+}
+
+class AppButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color? backgroundColor;
+  final Color? textColor;
+  final IconData? icon;
+  final bool isLoading;
+  final bool fullWidth;
+
+  const AppButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.backgroundColor,
+    this.textColor,
+    this.icon,
+    this.isLoading = false,
+    this.fullWidth = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: fullWidth ? double.infinity : null,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor ?? kPrimaryColor,
+          foregroundColor: textColor ?? Colors.white,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[Icon(icon), const SizedBox(width: 8)],
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class AppTextField extends StatefulWidget {
+  final String label;
+  final TextEditingController controller;
+  final String? Function(String?)? validator;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final int maxLines;
+  final IconData? prefixIcon;
+  final Widget? suffixIcon;
+
+  const AppTextField({
+    super.key,
+    required this.label,
+    required this.controller,
+    this.validator,
+    this.obscureText = false,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
+    this.prefixIcon,
+    this.suffixIcon,
+  });
+
+  @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  String? _errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: widget.obscureText,
+      keyboardType: widget.keyboardType,
+      maxLines: widget.maxLines,
+      onChanged: (value) {
+        if (widget.validator != null) {
+          setState(() {
+            _errorText = widget.validator!(value);
+          });
+        }
+      },
+      decoration: InputDecoration(
+        labelText: widget.label,
+        errorText: _errorText,
+        prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
+        suffixIcon: widget.suffixIcon,
+      ),
+    );
+  }
+}
+
+class LoadingWidget extends StatelessWidget {
+  final String message;
+
+  const LoadingWidget({super.key, this.message = 'Loading...'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(message, style: const TextStyle(fontSize: 16)),
+        ],
+      ),
+    );
+  }
+}
+
+class EmptyStateWidget extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+  final VoidCallback? onRefresh;
+
+  const EmptyStateWidget({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.icon,
+    this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: kTextSecondary),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: kTextPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 14, color: kTextSecondary),
+              textAlign: TextAlign.center,
+            ),
+            if (onRefresh != null) ...[
+              const SizedBox(height: 16),
+              AppButton(
+                text: 'Refresh',
+                onPressed: onRefresh!,
+                fullWidth: false,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================================
+// LOGIN PAGE
+// ================================
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: kAccentColor),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [kPrimaryLight, kPrimaryDark],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: AppCard(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Welcome Back!',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: kPrimaryDark,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Sign in to continue helping fight food waste',
+                        style: TextStyle(fontSize: 16, color: kTextSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      AppTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                        validator: Validators.validateEmail,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        validator: Validators.validatePassword,
+                        obscureText: _obscurePassword,
+                        prefixIcon: Icons.lock_outlined,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      AppButton(
+                        text: 'Sign In',
+                        onPressed: _login,
+                        isLoading: _isLoading,
+                        icon: Icons.login,
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          "Don't have an account? Sign up",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================================
+// REGISTER PAGE
+// ================================
+
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+
+  String _selectedRole = 'NGO';
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: kAccentColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userCredential = await _authService.signUp(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      await _firestoreService.createUserProfile(userCredential.user!.uid, {
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim(),
+        'role': _selectedRole,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful!'),
+            backgroundColor: kPrimaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: kAccentColor),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [kPrimaryLight, kPrimaryDark],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: AppCard(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: kPrimaryDark,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Join us in reducing food waste',
+                        style: TextStyle(fontSize: 16, color: kTextSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      AppTextField(
+                        label: 'Full Name',
+                        controller: _nameController,
+                        validator: (value) =>
+                            Validators.validateRequired(value, 'Name'),
+                        prefixIcon: Icons.person_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                        validator: Validators.validateEmail,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Phone Number',
+                        controller: _phoneController,
+                        validator: Validators.validatePhone,
+                        keyboardType: TextInputType.phone,
+                        prefixIcon: Icons.phone_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Address',
+                        controller: _addressController,
+                        validator: (value) =>
+                            Validators.validateRequired(value, 'Address'),
+                        prefixIcon: Icons.location_on_outlined,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedRole,
+                        decoration: const InputDecoration(
+                          labelText: 'Account Type',
+                          prefixIcon: Icon(Icons.account_circle_outlined),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'NGO',
+                            child: Text('NGO / Organization'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'EventManager',
+                            child: Text('Event Manager / Donor'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _selectedRole = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        validator: Validators.validatePassword,
+                        obscureText: _obscurePassword,
+                        prefixIcon: Icons.lock_outlined,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Confirm Password',
+                        controller: _confirmPasswordController,
+                        validator: Validators.validatePassword,
+                        obscureText: _obscureConfirmPassword,
+                        prefixIcon: Icons.lock_outlined,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      AppButton(
+                        text: 'Create Account',
+                        onPressed: _register,
+                        isLoading: _isLoading,
+                        icon: Icons.person_add,
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Already have an account? Sign in',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================================
+// DASHBOARD PAGE - FIXED NGO ISSUE
+// ================================
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+  UserProfile? _userProfile;
+  bool _isLoading = true;
+  LatLng? _currentLocation;
+  int _unreadMessageCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _getCurrentLocation();
+    _listenToMessages();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final profile = await _authService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    final position = await LocationService.getCurrentPosition();
+    if (position != null && mounted) {
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+    }
+  }
+
+  void _listenToMessages() {
+    final userId = _authService.currentUserId;
+    if (userId != null) {
+      _firestoreService.getUserChatRooms(userId).listen((snapshot) {
+        int unreadCount = 0;
+        for (var doc in snapshot) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['receiverId'] == userId && !(data['isRead'] ?? false)) {
+            unreadCount++;
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _unreadMessageCount = unreadCount;
+          });
+        }
+      });
+    }
+  }
+
+  Future<void> _signOut() async {
+    await _authService.signOut();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: LoadingWidget(message: 'Loading your dashboard...'),
+      );
+    }
+
+    if (_userProfile == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Unable to load user profile'),
+              const SizedBox(height: 16),
+              AppButton(
+                text: 'Retry',
+                onPressed: _loadUserData,
+                fullWidth: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: kBackgroundColor,
+      body: CustomScrollView(
+        slivers: [
+          _buildAppBar(),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildWelcomeCard(),
+                const SizedBox(height: 16),
+                _buildQuickActions(),
+                const SizedBox(height: 16),
+                if (_userProfile!.role == 'EventManager') _buildDonationCard(),
+                if (_userProfile!.role == 'NGO') _buildAvailableDonationsCard(),
+                const SizedBox(height: 16),
+                _buildMapCard(),
+                const SizedBox(height: 16),
+                _buildStatsCard(),
+                const SizedBox(height: 80), // Space for floating button
+              ]),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: _buildFloatingMessageButton(),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return SliverAppBar(
+      expandedHeight: 120,
+      pinned: true,
+      backgroundColor: kPrimaryColor,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          AppConstants.appName,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [kPrimaryLight, kPrimaryDark],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfilePage()),
+            );
+          },
+          icon: const Icon(Icons.person, color: Colors.white),
+        ),
+        IconButton(
+          onPressed: _signOut,
+          icon: const Icon(Icons.logout, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWelcomeCard() {
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: kPrimaryLight,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _userProfile!.role == 'NGO'
+                  ? Icons.volunteer_activism
+                  : Icons.event,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Welcome, ${_userProfile!.name}!',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: kTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _userProfile!.role == 'NGO'
+                      ? 'Ready to help communities in need'
+                      : 'Ready to share surplus food',
+                  style: const TextStyle(fontSize: 14, color: kTextSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    if (_userProfile!.role == 'NGO') {
+      return Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              'Browse Donations',
+              Icons.search,
+              kSecondaryColor,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BrowseDonationsPage(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              'My Requests',
+              Icons.request_quote,
+              Colors.orange,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyRequestsPage()),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              'Add Donation',
+              Icons.add_circle,
+              kAccentColor,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DonationFormPage(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              'My Donations',
+              Icons.list_alt,
+              kPrimaryColor,
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DonationListPage(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildActionButton(
+    String text,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      height: 80,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDonationCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.restaurant, color: kAccentColor),
+              const SizedBox(width: 8),
+              const Text(
+                'Share Your Food',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: kTextPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Have excess food from an event? Share it with organizations that can distribute it to those in need.',
+            style: TextStyle(fontSize: 14, color: kTextSecondary),
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'Add Food Donation',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DonationFormPage()),
+            ),
+            backgroundColor: kAccentColor,
+            icon: Icons.add_circle_outline,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailableDonationsCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.volunteer_activism, color: kSecondaryColor),
+              const SizedBox(width: 8),
+              const Text(
+                'Available Food',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: kTextPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Browse available food donations from events and connect with donors to help your community.',
+            style: TextStyle(fontSize: 14, color: kTextSecondary),
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'Browse Donations',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BrowseDonationsPage(),
+              ),
+            ),
+            backgroundColor: kSecondaryColor,
+            icon: Icons.search,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your Location',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: FlutterMap(
+                options: MapOptions(
+                  center:
+                      _currentLocation ??
+                      LatLng(28.6139, 77.2090), // Default to Delhi
+                  zoom: 13,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.surplus_serve',
+                  ),
+                  if (_currentLocation != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _currentLocation!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: kAccentColor,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Impact Statistics',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem('Donations', '12', Icons.restaurant),
+              _buildStatItem('People Helped', '156', Icons.people),
+              _buildStatItem('Kg Saved', '89', Icons.scale),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: kPrimaryColor, size: 32),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: kTextPrimary,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: kTextSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingMessageButton() {
+    return Stack(
+      children: [
+        FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MessagesPage()),
+            );
+          },
+          backgroundColor: kSecondaryColor,
+          child: const Icon(Icons.message, color: Colors.white),
+        ),
+        if (_unreadMessageCount > 0)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: kAccentColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              child: Center(
+                child: Text(
+                  '$_unreadMessageCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ================================
+// DONATION FORM PAGE
+// ================================
+
+class DonationFormPage extends StatefulWidget {
+  const DonationFormPage({super.key});
+
+  @override
+  State<DonationFormPage> createState() => _DonationFormPageState();
+}
+
+class _DonationFormPageState extends State<DonationFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _itemNameController = TextEditingController();
+  final _countController = TextEditingController();
+  final _servingController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+  bool _isLoading = false;
+
+  Future<void> _submitDonation() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Get current user profile to include donor info
+      final userProfile = await _authService.getCurrentUserProfile();
+
+      await _firestoreService.addDonation({
+        'category': 'Food',
+        'itemName': _itemNameController.text.trim(),
+        'count': _countController.text.trim(),
+        'servingCapacity': _servingController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'createdBy': _authService.currentUserId,
+        'createdByName': userProfile?.name ?? '',
+        'createdByPhone': userProfile?.phone ?? '',
+        'status': 'available',
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Donation submitted successfully!'),
+            backgroundColor: kPrimaryColor,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: kAccentColor),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add Donation'),
+        backgroundColor: kAccentColor,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: AppCard(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Share Your Food',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: kTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Help reduce food waste by sharing your excess food with organizations.',
+                  style: TextStyle(fontSize: 14, color: kTextSecondary),
+                ),
+                const SizedBox(height: 24),
+                AppTextField(
+                  label: 'Food Item Name',
+                  controller: _itemNameController,
+                  validator: (value) =>
+                      Validators.validateRequired(value, 'Food item name'),
+                  prefixIcon: Icons.restaurant,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'Quantity/Count',
+                  controller: _countController,
+                  validator: (value) =>
+                      Validators.validateRequired(value, 'Quantity'),
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.format_list_numbered,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'Serving Capacity (people)',
+                  controller: _servingController,
+                  validator: (value) =>
+                      Validators.validateRequired(value, 'Serving capacity'),
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.people,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'Description',
+                  controller: _descriptionController,
+                  validator: (value) =>
+                      Validators.validateRequired(value, 'Description'),
+                  maxLines: 3,
+                  prefixIcon: Icons.description,
+                ),
+                const SizedBox(height: 24),
+                AppButton(
+                  text: 'Submit Donation',
+                  onPressed: _submitDonation,
+                  isLoading: _isLoading,
+                  backgroundColor: kAccentColor,
+                  icon: Icons.send,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================================
+// BROWSE DONATIONS PAGE
+// ================================
+
+class BrowseDonationsPage extends StatefulWidget {
+  const BrowseDonationsPage({super.key});
+
+  @override
+  State<BrowseDonationsPage> createState() => _BrowseDonationsPageState();
+}
+
+class _BrowseDonationsPageState extends State<BrowseDonationsPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Available Donations'),
+        backgroundColor: kSecondaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestoreService.getAllDonations(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const LoadingWidget(message: 'Loading donations...');
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading donations'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Donations Available',
+              message:
+                  'There are currently no food donations available. Check back later!',
+              icon: Icons.inbox,
+            );
+          }
+
+          final donations = snapshot.data!.docs
+              .map((doc) => Donation.fromFirestore(doc))
+              .where(
+                (donation) => donation.createdBy != _authService.currentUserId,
+              )
+              .toList();
+
+          if (donations.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Other Donations',
+              message: 'No donations from other users are available right now.',
+              icon: Icons.inbox,
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: donations.length,
+            itemBuilder: (context, index) {
+              final donation = donations[index];
+              return _buildDonationCard(donation);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDonationCard(Donation donation) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimaryLight.withValues(alpha:0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.restaurant, color: kPrimaryColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      donation.itemName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: kTextPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Serves ${donation.servingCapacity} people',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: kTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  donation.status.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Quantity: ${donation.count}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            donation.description,
+            style: const TextStyle(fontSize: 14, color: kTextSecondary),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  text: 'Contact Donor',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatPage(
+                          donationId: donation.id,
+                          otherUserId: donation.createdBy,
+                          donationTitle: donation.itemName,
+                        ),
+                      ),
+                    );
+                  },
+                  backgroundColor: kSecondaryColor,
+                  icon: Icons.message,
+                ),
+              ),
+              const SizedBox(width: 12),
+              AppButton(
+                text: 'Request',
+                onPressed: () => _requestDonation(donation),
+                backgroundColor: kAccentColor,
+                icon: Icons.request_quote,
+                fullWidth: false,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _requestDonation(Donation donation) async {
+    final userProfile = await _authService.getCurrentUserProfile();
+    if (userProfile == null) return;
+
+    try {
+      await _firestoreService.sendMessage({
+        'senderId': _authService.currentUserId,
+        'receiverId': donation.createdBy,
+        'donationId': donation.id,
+        'message':
+            'Hi! I would like to request this food donation: ${donation.itemName}. Can we arrange pickup?',
+        'senderName': userProfile.name,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request sent successfully!'),
+            backgroundColor: kPrimaryColor,
+          ),
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatPage(
+              donationId: donation.id,
+              otherUserId: donation.createdBy,
+              donationTitle: donation.itemName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending request: $e'),
+            backgroundColor: kAccentColor,
+          ),
+        );
+      }
+    }
+  }
+}
+
+// ================================
+// DONATION LIST PAGE
+// ================================
+
+class DonationListPage extends StatefulWidget {
+  const DonationListPage({super.key});
+
+  @override
+  State<DonationListPage> createState() => _DonationListPageState();
+}
+
+class _DonationListPageState extends State<DonationListPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Donations'),
+        backgroundColor: kPrimaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestoreService.getUserDonations(_authService.currentUserId!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const LoadingWidget(message: 'Loading your donations...');
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading donations'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Donations Yet',
+              message:
+                  'You haven\'t created any donations yet. Start sharing your surplus food!',
+              icon: Icons.restaurant_outlined,
+            );
+          }
+
+          final donations = snapshot.data!.docs
+              .map((doc) => Donation.fromFirestore(doc))
+              .toList();
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: donations.length,
+            itemBuilder: (context, index) {
+              final donation = donations[index];
+              return _buildDonationCard(donation);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDonationCard(Donation donation) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimaryLight.withValues(alpha:0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.restaurant, color: kPrimaryColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      donation.itemName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: kTextPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Serves ${donation.servingCapacity} people',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: kTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editDonation(donation);
+                  } else if (value == 'delete') {
+                    _deleteDonation(donation);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit),
+                        SizedBox(width: 8),
+                        Text('Edit'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: kAccentColor),
+                        SizedBox(width: 8),
+                        Text('Delete'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Quantity: ${donation.count}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            donation.description,
+            style: const TextStyle(fontSize: 14, color: kTextSecondary),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: donation.status == 'available'
+                      ? kPrimaryColor
+                      : Colors.orange,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  donation.status.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Created: ${donation.createdAt.day}/${donation.createdAt.month}/${donation.createdAt.year}',
+                style: const TextStyle(fontSize: 12, color: kTextSecondary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editDonation(Donation donation) {
+    // Navigate to edit donation page (you can implement this)
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit functionality coming soon!'),
+        backgroundColor: kSecondaryColor,
+      ),
+    );
+  }
+
+  Future<void> _deleteDonation(Donation donation) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Donation'),
+        content: Text(
+          'Are you sure you want to delete "${donation.itemName}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: kAccentColor)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _firestoreService.deleteDonation(donation.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Donation deleted successfully'),
+              backgroundColor: kPrimaryColor,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting donation: $e'),
+              backgroundColor: kAccentColor,
+            ),
+          );
+        }
+      }
+    }
+  }
+}
+
+// ================================
+// MY REQUESTS PAGE
+// ================================
+
+class MyRequestsPage extends StatefulWidget {
+  const MyRequestsPage({super.key});
+
+  @override
+  State<MyRequestsPage> createState() => _MyRequestsPageState();
+}
+
+class _MyRequestsPageState extends State<MyRequestsPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Requests'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<List<QueryDocumentSnapshot>>(
+        stream: _firestoreService.getUserChatRooms(_authService.currentUserId!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const LoadingWidget(message: 'Loading your requests...');
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading requests'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Requests Yet',
+              message:
+                  'You haven\'t made any donation requests yet. Browse available donations to get started!',
+              icon: Icons.request_quote_outlined,
+            );
+          }
+
+          final messages = snapshot.data!
+              .map((doc) => ChatMessage.fromFirestore(doc))
+              .where(
+                (message) => message.senderId == _authService.currentUserId,
+              )
+              .toList();
+
+          if (messages.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Requests Yet',
+              message: 'You haven\'t made any donation requests yet.',
+              icon: Icons.request_quote_outlined,
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              return _buildRequestCard(message);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(ChatMessage message) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha:0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.request_quote, color: Colors.orange),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Donation Request',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: kTextPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Sent: ${message.timestamp.day}/${message.timestamp.month}/${message.timestamp.year}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: kTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message.message,
+            style: const TextStyle(fontSize: 14, color: kTextSecondary),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'View Conversation',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatPage(
+                    donationId: message.donationId,
+                    otherUserId: message.receiverId,
+                    donationTitle: 'Donation Request',
+                  ),
+                ),
+              );
+            },
+            backgroundColor: Colors.orange,
+            icon: Icons.chat,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ================================
+// MESSAGES PAGE
+// ================================
+
+class MessagesPage extends StatefulWidget {
+  const MessagesPage({super.key});
+
+  @override
+  State<MessagesPage> createState() => _MessagesPageState();
+}
+
+class _MessagesPageState extends State<MessagesPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUserId = _authService.currentUserId;
+
+    if (currentUserId == null) {
+      return const Scaffold(body: Center(child: Text("User not logged in")));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Messages'),
+        backgroundColor: kSecondaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: StreamBuilder<List<QueryDocumentSnapshot>>(
+        stream: _firestoreService.getUserChatRooms(currentUserId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const LoadingWidget(message: 'Loading messages...');
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Messages',
+              message:
+                  'You don\'t have any messages yet. Contact donors or browse donations to start chatting!',
+              icon: Icons.chat_bubble_outline,
+            );
+          }
+
+          // Convert Firestore docs -> ChatMessage list
+          final messages = snapshot.data!
+              .map((doc) => ChatMessage.fromFirestore(doc))
+              .toList();
+
+          // Group by donation + other user
+          final chatRooms = _groupMessagesByChat(messages);
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: chatRooms.length,
+            itemBuilder: (context, index) {
+              final chatRoom = chatRooms[index];
+              return _buildChatRoomCard(chatRoom);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  List<ChatRoom> _groupMessagesByChat(List<ChatMessage> messages) {
+    final Map<String, ChatRoom> chatRoomMap = {};
+    final currentUserId = _authService.currentUserId!;
+
+    for (final message in messages) {
+      final otherUserId = message.senderId == currentUserId
+          ? message.receiverId
+          : message.senderId;
+
+      final chatKey = '${message.donationId}_$otherUserId';
+
+      if (!chatRoomMap.containsKey(chatKey)) {
+        chatRoomMap[chatKey] = ChatRoom(
+          id: chatKey,
+          donationId: message.donationId,
+          donationTitle: 'Food Donation', // TODO: fetch actual donation title
+          otherUserId: otherUserId,
+          otherUserName: message.senderName.isNotEmpty
+              ? message.senderName
+              : 'Unknown',
+          lastMessage: message.message,
+          lastMessageTime: message.timestamp,
+        );
+      } else {
+        final existingRoom = chatRoomMap[chatKey]!;
+        if (message.timestamp.isAfter(existingRoom.lastMessageTime)) {
+          chatRoomMap[chatKey] = ChatRoom(
+            id: existingRoom.id,
+            donationId: existingRoom.donationId,
+            donationTitle: existingRoom.donationTitle,
+            otherUserId: existingRoom.otherUserId,
+            otherUserName: message.senderName.isNotEmpty
+                ? message.senderName
+                : existingRoom.otherUserName,
+            lastMessage: message.message,
+            lastMessageTime: message.timestamp,
+          );
+        }
+      }
+    }
+
+    final chatRooms = chatRoomMap.values.toList();
+    chatRooms.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+    return chatRooms;
+  }
+
+  Widget _buildChatRoomCard(ChatRoom chatRoom) {
+    return AppCard(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: kPrimaryColor,
+          child: Text(
+            chatRoom.otherUserName.isNotEmpty
+                ? chatRoom.otherUserName[0].toUpperCase()
+                : 'U',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          chatRoom.otherUserName.isNotEmpty
+              ? chatRoom.otherUserName
+              : 'Unknown User',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: kTextPrimary,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              chatRoom.donationTitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: kSecondaryColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              chatRoom.lastMessage,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: kTextSecondary),
+            ),
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${chatRoom.lastMessageTime.hour}:${chatRoom.lastMessageTime.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(fontSize: 12, color: kTextSecondary),
+            ),
+            if (chatRoom.unreadCount > 0)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: kAccentColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  chatRoom.unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatPage(
+                donationId: chatRoom.donationId,
+                otherUserId: chatRoom.otherUserId,
+                donationTitle: chatRoom.donationTitle,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ================================
+// CHAT PAGE
+// ================================
+
+class ChatPage extends StatefulWidget {
+  final String donationId;
+  final String otherUserId;
+  final String donationTitle;
+
+  const ChatPage({
+    super.key,
+    required this.donationId,
+    required this.otherUserId,
+    required this.donationTitle,
+  });
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  UserProfile? _otherUserProfile;
+  Donation? _donation;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChatData();
+  }
+
+  Future<void> _loadChatData() async {
+    final otherUser = await _firestoreService.getUserProfile(
+      widget.otherUserId,
+    );
+    final donation = await _firestoreService.getDonation(widget.donationId);
+
+    if (mounted) {
+      setState(() {
+        _otherUserProfile = otherUser;
+        _donation = donation;
+      });
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    final currentUser = await _authService.getCurrentUserProfile();
+    if (currentUser == null) return;
+
+    try {
+      await _firestoreService.sendMessage({
+        'senderId': _authService.currentUserId,
+        'receiverId': widget.otherUserId,
+        'donationId': widget.donationId,
+        'message': _messageController.text.trim(),
+        'senderName': currentUser.name,
+      });
+
+      _messageController.clear();
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending message: $e'),
+            backgroundColor: kAccentColor,
+          ),
+        );
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _otherUserProfile?.name ?? 'Loading...',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Text(
+              widget.donationTitle,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: kSecondaryColor,
+        foregroundColor: Colors.white,
+        actions: [
+          if (_otherUserProfile != null)
+            IconButton(
+              onPressed: () => _showUserInfo(),
+              icon: const Icon(Icons.info_outline),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_donation != null) _buildDonationHeader(),
+          Expanded(
+            child: StreamBuilder<List<QueryDocumentSnapshot>>(
+              stream: _firestoreService.getChatMessages(
+                _authService.currentUserId!,
+                widget.otherUserId,
+                widget.donationId,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LoadingWidget(message: 'Loading messages...');
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No messages yet. Start the conversation!',
+                      style: TextStyle(fontSize: 16, color: kTextSecondary),
+                    ),
+                  );
+                }
+
+                final messages = snapshot.data!
+                    .map((doc) => ChatMessage.fromFirestore(doc))
+                    .toList();
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return _buildMessageBubble(message);
+                  },
+                );
+              },
+            ),
+          ),
+          _buildMessageInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDonationHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: kPrimaryLight.withValues(alpha:0.1),
+        border: const Border(
+          bottom: BorderSide(color: kPrimaryLight, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.restaurant, color: kPrimaryColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _donation!.itemName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: kTextPrimary,
+                  ),
+                ),
+                Text(
+                  'Serves ${_donation!.servingCapacity} people • ${_donation!.count}',
+                  style: const TextStyle(fontSize: 12, color: kTextSecondary),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: kPrimaryColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _donation!.status.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isMe = message.senderId == _authService.currentUserId;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.7,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMe ? kSecondaryColor : kCardColor,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha:0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message.message,
+              style: TextStyle(
+                fontSize: 16,
+                color: isMe ? Colors.white : kTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}',
+              style: TextStyle(
+                fontSize: 12,
+                color: isMe ? Colors.white70 : kTextSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: kCardColor,
+        border: Border(top: BorderSide(color: kPrimaryLight, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: 'Type a message...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ),
+          const SizedBox(width: 8),
+          FloatingActionButton(
+            onPressed: _sendMessage,
+            backgroundColor: kSecondaryColor,
+            mini: true,
+            child: const Icon(Icons.send, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUserInfo() {
+    if (_otherUserProfile == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(_otherUserProfile!.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Email: ${_otherUserProfile!.email}'),
+            const SizedBox(height: 8),
+            Text('Phone: ${_otherUserProfile!.phone}'),
+            const SizedBox(height: 8),
+            Text('Address: ${_otherUserProfile!.address}'),
+            const SizedBox(height: 8),
+            Text('Type: ${_otherUserProfile!.role}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ================================
+// PROFILE PAGE
+// ================================
+
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final AuthService _authService = AuthService();
+  UserProfile? _userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await _authService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: kPrimaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading
+          ? const LoadingWidget(message: 'Loading profile...')
+          : _userProfile == null
+          ? const Center(child: Text('Unable to load profile'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildProfileHeader(),
+                  const SizedBox(height: 24),
+                  _buildProfileInfo(),
+                  const SizedBox(height: 24),
+                  _buildActionButtons(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return AppCard(
+      child: Column(
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: const BoxDecoration(
+              color: kPrimaryColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _userProfile!.role == 'NGO'
+                  ? Icons.volunteer_activism
+                  : Icons.event,
+              color: Colors.white,
+              size: 50,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _userProfile!.name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: kPrimaryLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _userProfile!.role == 'NGO'
+                  ? 'NGO / Organization'
+                  : 'Event Manager / Donor',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileInfo() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Profile Information',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: kTextPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildInfoItem(Icons.email, 'Email', _userProfile!.email),
+          const SizedBox(height: 12),
+          _buildInfoItem(Icons.phone, 'Phone', _userProfile!.phone),
+          const SizedBox(height: 12),
+          _buildInfoItem(Icons.location_on, 'Address', _userProfile!.address),
+          const SizedBox(height: 12),
+          _buildInfoItem(
+            Icons.calendar_today,
+            'Member Since',
+            '${_userProfile!.createdAt.day}/${_userProfile!.createdAt.month}/${_userProfile!.createdAt.year}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: kPrimaryColor, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: kTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 16, color: kTextPrimary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        AppButton(
+          text: 'Edit Profile',
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Edit profile feature coming soon!'),
+                backgroundColor: kSecondaryColor,
+              ),
+            );
+          },
+          backgroundColor: kSecondaryColor,
+          icon: Icons.edit,
+        ),
+        const SizedBox(height: 12),
+        AppButton(
+          text: 'Sign Out',
+          onPressed: () async {
+            await _authService.signOut();
+          },
+          backgroundColor: kAccentColor,
+          icon: Icons.logout,
+        ),
+      ],
+    );
+  }
+}

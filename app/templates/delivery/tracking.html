@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .section {
+            background: #f7f7f7;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .section-title {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        .call-btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        
+        .map-container {
+            height: 200px;
+            background: #eee;
+            border-radius: 12px;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .map-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            display: none;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 15px;
+        }
+        
+        .error-message {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Delivery Tracking</h1>
+            <p>Track your delivery in real time</p>
+        </div>
+        
+        <div class="content">
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading tracking info...</p>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage">
+                <h3>✅ Delivery Confirmed!</h3>
+                <p>Your delivery is on the way.</p>
+            </div>
+            
+            <!-- Driver Info -->
+            <div class="section" id="driverSection" style="display: none;">
+                <div class="section-title">
+                    <span>👨‍✈️</span> Delivery Partner
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Name</span>
+                    <span class="info-value" id="driverName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value" id="driverPhone">-</span>
+                    <button class="call-btn" id="callDriverBtn">📞 Call</button>
+                </div>
+            </div>
+            
+            <!-- Pickup Location (Donor) -->
+            <div class="section" id="pickupSection" style="display: none;">
+                <div class="section-title">
+                    <span>📍</span> Pickup Location
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Donor</span>
+                    <span class="info-value" id="pickupName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value" id="pickupPhone">-</span>
+                    <button class="call-btn" id="callPickupBtn">📞 Call</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Coordinates</span>
+                    <span class="info-value" id="pickupCoords">-</span>
+                </div>
+            </div>
+            
+            <!-- Dropoff Location (NGO) -->
+            <div class="section" id="dropoffSection" style="display: none;">
+                <div class="section-title">
+                    <span>🏢</span> Dropoff Location
+                </div>
+                <div class="info-row">
+                    <span class="info-label">NGO</span>
+                    <span class="info-value" id="dropoffName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value" id="dropoffPhone">-</span>
+                    <button class="call-btn" id="callDropoffBtn">📞 Call</button>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Coordinates</span>
+                    <span class="info-value" id="dropoffCoords">-</span>
+                </div>
+            </div>
+            
+            <!-- Map Placeholder -->
+            <div class="map-container" id="mapContainer">
+                <div class="map-placeholder" id="mapPlaceholder">
+                    🗺️ Map will appear here (Google Maps integration needed)
+                </div>
+            </div>
+            
+            <!-- Estimated Time -->
+            <div class="section" id="timeSection" style="display: none;">
+                <div class="section-title">
+                    <span>⏱️</span> Estimated Time
+                </div>
+                <div class="info-row">
+                    <span class="info-label">ETA</span>
+                    <span class="info-value" id="etaText">-</span>
+                </div>
+            </div>
+            
+            <!-- Status -->
+            <div class="section" id="statusSection" style="display: none;">
+                <div class="section-title">
+                    <span>🚦</span> Status
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Current</span>
+                    <span class="info-value" id="statusText">-</span>
+                </div>
+            </div>
+            
+            <!-- Back Button -->
+            <button class="btn btn-primary" id="backBtn">Back to Home</button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        
+        if (!orderId) {
+            document.getElementById('errorMessage').textContent = 'No order ID provided.';
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            throw new Error('No order ID');
+        }
+        
+        // Load tracking data
+        loadTrackingData();
+        
+        async function loadTrackingData() {
+            const loading = document.getElementById('loading');
+            const errorMsg = document.getElementById('errorMessage');
+            
+            try {
+                const response = await fetch(`/api/delivery/tracking/${orderId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load tracking data');
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load tracking data');
+                }
+                
+                const data = result.data;
+                
+                // Populate fields
+                document.getElementById('driverName').textContent = data.driver.name;
+                document.getElementById('driverPhone').textContent = data.driver.phone;
+                document.getElementById('pickupName').textContent = data.pickup.name;
+                document.getElementById('pickupPhone').textContent = data.pickup.phone;
+                document.getElementById('dropoffName').textContent = data.dropoff.name;
+                document.getElementById('dropoffPhone').textContent = data.dropoff.phone;
+                document.getElementById('etaText').textContent = `${data.estimatedTime} minutes`;
+                document.getElementById('statusText').textContent = data.status;
+                
+                // Format coordinates
+                const formatCoords = (lat, lng) => lat && lng ? `${lat.toFixed(6)}, ${lng.toFixed(6)}` : 'Not available';
+                
+                document.getElementById('pickupCoords').textContent = formatCoords(
+                    data.pickup.location.latitude,
+                    data.pickup.location.longitude
+                );
+                
+                document.getElementById('dropoffCoords').textContent = formatCoords(
+                    data.dropoff.location.latitude,
+                    data.dropoff.location.longitude
+                );
+                
+                // Show sections
+                document.getElementById('driverSection').style.display = 'block';
+                document.getElementById('pickupSection').style.display = 'block';
+                document.getElementById('dropoffSection').style.display = 'block';
+                document.getElementById('timeSection').style.display = 'block';
+                document.getElementById('statusSection').style.display = 'block';
+                
+                // Setup call buttons
+                setupCallButtons(data);
+                
+                // Hide loading
+                loading.style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                errorMsg.textContent = `Failed to load tracking info: ${error.message}`;
+                errorMsg.style.display = 'block';
+            }
+        }
+        
+        function setupCallButtons(data) {
+            const callDriverBtn = document.getElementById('callDriverBtn');
+            const callPickupBtn = document.getElementById('callPickupBtn');
+            const callDropoffBtn = document.getElementById('callDropoffBtn');
+            
+            callDriverBtn.onclick = () => {
+                if (data.driver.phone) {
+                    window.location.href = `tel:${data.driver.phone}`;
+                }
+            };
+            
+            callPickupBtn.onclick = () => {
+                if (data.pickup.phone) {
+                    window.location.href = `tel:${data.pickup.phone}`;
+                }
+            };
+            
+            callDropoffBtn.onclick = () => {
+                if (data.dropoff.phone) {
+                    window.location.href = `tel:${data.dropoff.phone}`;
+                }
+            };
+        }
+        
+        // Back button
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.history.back();
+        });
+    </script>
+</body>
+</html>

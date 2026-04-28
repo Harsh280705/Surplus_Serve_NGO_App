@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Delivery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .info-card {
+            background: #f7f7f7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-card h3 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        .quote-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .quote-card h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .quote-details {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .quote-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .quote-item span:first-child {
+            opacity: 0.9;
+        }
+        
+        .quote-item span:last-child {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .price-total {
+            font-size: 32px !important;
+            color: #ffd700;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            display: none;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(17, 153, 142, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            display: none;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 20px;
+        }
+        
+        .success-message h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .error-message {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .icon {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Request Delivery</h1>
+            <p>Get your donation delivered to the NGO</p>
+        </div>
+        
+        <div class="content">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage">
+                <h3>✅ Delivery Requested!</h3>
+                <p>Your delivery has been scheduled. The delivery partner will contact you shortly.</p>
+            </div>
+            
+            <div class="info-card">
+                <h3><span class="icon">📦</span> Donation Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Donation ID</span>
+                    <span class="info-value">{{ donation_id }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Serves</span>
+                    <span class="info-value">{{ serving_capacity }} people</span>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h3><span class="icon">📍</span> Pickup Location</h3>
+                <div class="info-row">
+                    <span class="info-label">Donor</span>
+                    <span class="info-value">{{ donor_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value">{{ donor_phone }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Coordinates</span>
+                    <span class="info-value">{{ pickup_lat }}, {{ pickup_lng }}</span>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h3><span class="icon">🏢</span> Dropoff Location</h3>
+                <div class="info-row">
+                    <span class="info-label">NGO</span>
+                    <span class="info-value">{{ ngo_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value">{{ ngo_phone }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Coordinates</span>
+                    <span class="info-value">{{ dropoff_lat }}, {{ dropoff_lng }}</span>
+                </div>
+            </div>
+            
+            <div class="quote-card" id="quoteCard">
+                <h3>💰 Delivery Quote</h3>
+                <div class="quote-details">
+                    <div class="quote-item">
+                        <span>Distance</span>
+                        <span id="quoteDistance">--</span>
+                    </div>
+                    <div class="quote-item">
+                        <span>Estimated Time</span>
+                        <span id="quoteTime">--</span>
+                    </div>
+                    <div class="quote-item">
+                        <span>Total Price</span>
+                        <span class="price-total" id="quotePrice">₹--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p>Getting delivery quote...</p>
+            </div>
+            
+            <button class="btn btn-primary" id="getQuoteBtn">
+                Get Delivery Quote
+            </button>
+            
+            <button class="btn btn-success" id="confirmBtn">
+                Confirm Delivery Request
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const donationId = '{{ donation_id }}';
+        const ngoId = '{{ ngo_id }}';
+        const pickupLat = parseFloat('{{ pickup_lat }}');
+        const pickupLng = parseFloat('{{ pickup_lng }}');
+        const dropoffLat = parseFloat('{{ dropoff_lat }}');
+        const dropoffLng = parseFloat('{{ dropoff_lng }}');
+        const ngoName = '{{ ngo_name }}';
+        const ngoPhone = '{{ ngo_phone }}';
+        const donorName = '{{ donor_name }}';
+        const donorPhone = '{{ donor_phone }}';
+        const servingCapacity = parseInt('{{ serving_capacity }}') || 0;  // ✅ ADDED
+        
+        let currentQuote = null;
+        
+        document.getElementById('getQuoteBtn').addEventListener('click', getQuote);
+        document.getElementById('confirmBtn').addEventListener('click', confirmDelivery);
+        
+        async function getQuote() {
+            const btn = document.getElementById('getQuoteBtn');
+            const loading = document.getElementById('loading');
+            const quoteCard = document.getElementById('quoteCard');
+            const errorMsg = document.getElementById('errorMessage');
+            
+            btn.disabled = true;
+            loading.style.display = 'block';
+            errorMsg.style.display = 'none';
+            
+            try {
+                // ✅ FIX: Use correct API endpoint with /api prefix
+                const response = await fetch('/api/delivery/quote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        pickup_lat: pickupLat,
+                        pickup_lng: pickupLng,
+                        dropoff_lat: dropoffLat,
+                        dropoff_lng: dropoffLng,
+                        serving_capacity: servingCapacity  // ✅ ADDED
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get quote');
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to get quote');
+                }
+                
+                currentQuote = result.data;
+                
+                // ✅ FIX: Access the correct fields from the response
+                const distance = currentQuote.distanceKm || 0;
+                const duration = currentQuote.estimatedDurationMinutes || 0;
+                
+                // Use Porter as default provider for pricing
+                const porterPrice = currentQuote.providers?.porter?.estimatedPrice || 0;
+                
+                document.getElementById('quoteDistance').textContent = `${distance.toFixed(1)} km`;
+                document.getElementById('quoteTime').textContent = `${duration} min`;
+                document.getElementById('quotePrice').textContent = `₹${porterPrice.toFixed(0)}`;
+                
+                loading.style.display = 'none';
+                quoteCard.style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('confirmBtn').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                btn.disabled = false;
+                errorMsg.textContent = `Failed to get delivery quote: ${error.message}`;
+                errorMsg.style.display = 'block';
+            }
+        }
+        
+        async function confirmDelivery() {
+            const btn = document.getElementById('confirmBtn');
+            const loading = document.getElementById('loading');
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+            
+            btn.disabled = true;
+            loading.style.display = 'block';
+            loading.querySelector('p').textContent = 'Confirming delivery request...';
+            errorMsg.style.display = 'none';
+            
+            try {
+                // ✅ FIX: Use correct API endpoint with /api prefix
+                const response = await fetch('/api/delivery/order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        donation_id: donationId,
+                        ngo_id: ngoId,
+                        pickup_lat: pickupLat,
+                        pickup_lng: pickupLng,
+                        dropoff_lat: dropoffLat,
+                        dropoff_lng: dropoffLng,
+                        ngo_name: ngoName,
+                        ngo_phone: ngoPhone,
+                        donor_name: donorName,
+                        donor_phone: donorPhone,
+                        price: currentQuote.providers?.porter?.estimatedPrice || 0,
+                        distance: currentQuote.distanceKm || 0,
+                        duration: currentQuote.estimatedDurationMinutes || 0
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create delivery order');
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to create delivery order');
+                }
+                
+                loading.style.display = 'none';
+                successMsg.style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('quoteCard').style.display = 'none';
+                
+                // Redirect back to app after 3 seconds
+                setTimeout(() => {
+                    // Try to close the webview or redirect to a deep link
+                    window.location.href = 'fooddonation://delivery/success?donation_id=' + donationId;
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                btn.disabled = false;
+                errorMsg.textContent = `Failed to confirm delivery: ${error.message}`;
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

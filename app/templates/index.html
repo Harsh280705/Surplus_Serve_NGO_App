@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Surplus Serve</title>
+</head>
+<body>
+  <h1>Surplus Serve Frontend</h1>
+
+  <button onclick="checkHealth()">Check Backend</button>
+
+  <pre id="output"></pre>
+
+  <script>
+    async function checkHealth() {
+      const res = await fetch('/api/delivery/health');
+      const data = await res.json();
+      document.getElementById('output').innerText =
+        JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

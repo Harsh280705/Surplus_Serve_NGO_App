@@ -1,0 +1,309 @@
+<!-- app/templates/delivery/delivery_options.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Delivery Method</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/delivery.css') }}">
+</head>
+<body>
+    <div class="delivery-container">
+        
+        <!-- HEADER -->
+        <div class="delivery-header">
+            <h1>📦 Choose Delivery Method</h1>
+            <p class="subtitle">Select how you want to deliver this food donation</p>
+        </div>
+
+        <!-- DONATION INFO CARD -->
+        <div class="donation-info-card">
+            <div class="info-row">
+                <span class="label">From:</span>
+                <span class="value" id="pickupAddress">Loading...</span>
+            </div>
+            <div class="info-row">
+                <span class="label">To:</span>
+                <span class="value" id="dropAddress">Loading...</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Distance:</span>
+                <span class="value" id="distance">Calculating...</span>
+            </div>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Calculating prices...</p>
+        </div>
+
+        <!-- DELIVERY OPTIONS GRID -->
+        <div id="optionsContainer" class="delivery-options-grid" style="display: none;">
+            <!-- Options will be dynamically inserted here -->
+        </div>
+
+        <!-- ERROR STATE -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- FOOTER -->
+        <div class="delivery-footer">
+            <button id="backBtn" class="btn btn-secondary" onclick="history.back()">
+                ← Back
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = '/api/delivery';
+        const DELIVERY_METHODS = {
+            'porter': '🏃 Porter',
+            'dunzo': '⚡ Dunzo',
+            'rapido': '🏍️ Rapido',
+            'swiggy_genie': '🚗 Swiggy Genie',
+            'self_service': '👥 Self-Service Delivery'
+        };
+
+        // Get parameters from URL or sessionStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const donationId = urlParams.get('donationId');
+        const pickupLat = parseFloat(urlParams.get('pickupLat'));
+        const pickupLng = parseFloat(urlParams.get('pickupLng'));
+        const dropLat = parseFloat(urlParams.get('dropLat'));
+        const dropLng = parseFloat(urlParams.get('dropLng'));
+        const pickupAddressParam = urlParams.get('pickupAddress');
+        const dropAddressParam = urlParams.get('dropAddress');
+        const pickupCity = urlParams.get('pickupCity') || '';
+        const dropCity = urlParams.get('dropCity') || '';
+
+        // Display addresses
+        document.getElementById('pickupAddress').textContent = pickupAddressParam || 'Not provided';
+        document.getElementById('dropAddress').textContent = dropAddressParam || 'Not provided';
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            estimateAndDisplayPrices();
+        });
+
+        // ESTIMATE PRICES
+        async function estimateAndDisplayPrices() {
+            try {
+                showLoading(true);
+
+                const response = await fetch(`${API_BASE}/estimate-price`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        pickupLat: pickupLat,
+                        pickupLng: pickupLng,
+                        dropLat: dropLat,
+                        dropLng: dropLng
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    showError('Failed to calculate prices: ' + (result.error || 'Unknown error'));
+                    return;
+                }
+
+                const { distanceKm, providers } = result.data;
+                
+                // Update distance display
+                document.getElementById('distance').textContent = `${distanceKm.toFixed(1)} km`;
+
+                // Build options HTML
+                displayDeliveryOptions(providers);
+
+                showLoading(false);
+                document.getElementById('optionsContainer').style.display = 'grid';
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error calculating prices. Please try again.');
+                showLoading(false);
+            }
+        }
+
+        // DISPLAY OPTIONS
+        function displayDeliveryOptions(providers) {
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = '';
+
+            // Get all providers
+            const providerIds = Object.keys(DELIVERY_METHODS);
+
+            providerIds.forEach(providerId => {
+                const priceData = providers[providerId];
+                if (!priceData) return;
+
+                const optionCard = createOptionCard(providerId, priceData);
+                container.appendChild(optionCard);
+            });
+        }
+
+        // CREATE OPTION CARD
+        function createOptionCard(providerId, priceData) {
+            const card = document.createElement('div');
+            card.className = 'delivery-option-card';
+
+            let priceHTML = '';
+            if (providerId !== 'self_service') {
+                const price = priceData.estimatedPrice;
+                priceHTML = `
+                    <div class="price-section">
+                        <span class="price-label">Estimated Price</span>
+                        <span class="price-value">₹${price.toFixed(0)}</span>
+                        <span class="price-info">${priceData.estimatedTimeMinutes} mins</span>
+                    </div>
+                `;
+            } else {
+                priceHTML = `
+                    <div class="price-section">
+                        <span class="price-label">No Additional Cost</span>
+                        <span class="price-value">₹0</span>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="option-header">
+                    <h3>${DELIVERY_METHODS[providerId]}</h3>
+                </div>
+                ${priceHTML}
+                <button class="btn btn-primary btn-block" onclick="selectDeliveryOption('${providerId}')">
+                    ${providerId === 'self_service' ? 'Select Self-Service' : 'Book Delivery'}
+                </button>
+            `;
+
+            return card;
+        }
+
+        // SELECT DELIVERY OPTION
+        async function selectDeliveryOption(providerId) {
+            try {
+                // Prepare booking data
+                const prepareResponse = await fetch(`${API_BASE}/prepare-booking`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        provider: providerId,
+                        pickupAddress: pickupAddressParam,
+                        pickupCity: pickupCity,
+                        dropAddress: dropAddressParam,
+                        dropCity: dropCity,
+                        isMobile: /iPhone|iPad|Android/i.test(navigator.userAgent)
+                    })
+                });
+
+                const prepareResult = await prepareResponse.json();
+
+                if (!prepareResult.success) {
+                    showError('Failed to prepare booking');
+                    return;
+                }
+
+                const { redirectUrl, addresses } = prepareResult.data;
+
+                // Copy addresses to clipboard
+                copyAddressesToClipboard(addresses);
+
+                // Record booking
+                recordBooking(providerId, redirectUrl);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error processing booking');
+            }
+        }
+
+        // COPY ADDRESSES
+        function copyAddressesToClipboard(addresses) {
+            const text = addresses.fullText;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('✓ Addresses copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showNotification('Copy manually: ' + text);
+            });
+        }
+
+        // RECORD BOOKING
+        async function recordBooking(providerId, redirectUrl) {
+            try {
+                // Get price from display
+                const priceElement = document.querySelector(
+                    `[onclick="selectDeliveryOption('${providerId}')"]`
+                ).closest('.delivery-option-card').querySelector('.price-value');
+                const price = providerId === 'self_service' ? 0 : 
+                    parseFloat(priceElement.textContent.replace('₹', ''));
+
+                const response = await fetch(`${API_BASE}/book`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        donationId: donationId,
+                        provider: providerId,
+                        estimatedPrice: price,
+                        distance: parseFloat(document.getElementById('distance').textContent)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('✓ Booking recorded!');
+                    
+                    // Redirect to external service if not self-service
+                    if (redirectUrl && providerId !== 'self_service') {
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 1500);
+                    } else {
+                        // Redirect to status page
+                        setTimeout(() => {
+                            window.location.href = `/delivery/status/${donationId}`;
+                        }, 1500);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to record booking');
+            }
+        }
+
+        // UTILITY FUNCTIONS
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+
+</body>
+</html>

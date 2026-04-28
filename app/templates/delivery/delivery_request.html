@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚚 Request Delivery</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --secondary-dark: #5e079a;
+            --success: #06d6a0;
+            --success-light: #a8f0d0;
+            --success-dark: #05b888;
+            --warning: #ffd166;
+            --warning-dark: #e5b800;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-top: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--gray-600);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .success-message {
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+            color: white;
+            padding: 24px;
+            border-radius: var(--radius);
+            margin-bottom: 28px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .success-message h2 {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--primary);
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .section-title i {
+            background: rgba(67, 97, 238, 0.15);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-row {
+            display: flex;
+            padding: 16px;
+            background: var(--gray-100);
+            border-radius: var(--radius);
+            border-left: 4px solid var(--primary);
+            transition: var(--transition);
+        }
+
+        .info-row:hover {
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--gray-700);
+            width: 150px;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            color: var(--gray-800);
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .location-section {
+            margin-top: 24px;
+        }
+
+        .location-card {
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+
+        .location-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .location-card.pickup {
+            border-left: 4px solid #ef4444;
+        }
+
+        .location-card.dropoff {
+            border-left: 4px solid #22c55e;
+        }
+
+        .location-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+
+        .location-header i {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .location-card.pickup .location-header i {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .location-card.dropoff .location-header i {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .form-section {
+            margin-top: 32px;
+            padding-top: 32px;
+            border-top: 2px dashed var(--gray-300);
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 10px;
+            font-size: 1.05rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 1.05rem;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+        }
+
+        .form-group small {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .auto-assign-info {
+            background: #fffbeb;
+            border: 1px solid var(--warning-dark);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
+            position: relative;
+            padding-left: 56px;
+        }
+
+        .auto-assign-info::before {
+            content: "⚡";
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            font-size: 1.5rem;
+            color: var(--warning-dark);
+        }
+
+        .auto-assign-info h3 {
+            color: var(--warning-dark);
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .auto-assign-info p {
+            color: #78350f;
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @media (max-width: 600px) {
+            .info-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .info-label {
+                width: 100%;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Request Delivery</h1>
+            <p>Get your donation delivered to the NGO efficiently and securely</p>
+        </div>
+
+        <div class="card">
+            <div class="success-message">
+                <h2>
+                    <i class="fas fa-check-circle"></i>
+                    <span>Delivery Requested Successfully!</span>
+                </h2>
+                <p>Your delivery has been scheduled. The delivery partner will contact you shortly.</p>
+            </div>
+
+            <div class="section-title">
+                <i class="fas fa-box"></i>
+                <span>Donation Details</span>
+            </div>
+            <div class="info-grid">
+                <div class="info-row">
+                    <div class="info-label">Donation ID</div>
+                    <div class="info-value">{{ donation_id }}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Serves</div>
+                    <div class="info-value">{{ serving_capacity }} people</div>
+                </div>
+            </div>
+
+            <div class="location-section">
+                <div class="location-card pickup">
+                    <div class="location-header">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Pickup Location</span>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <div class="info-label">Donor</div>
+                            <div class="info-value">{{ donor_name }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value">{{ donor_phone }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Coordinates</div>
+                            <div class="info-value">{{ "%.6f"|format(pickup_lat) }}, {{ "%.6f"|format(pickup_lng) }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="location-card dropoff">
+                    <div class="location-header">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Dropoff Location</span>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <div class="info-label">NGO</div>
+                            <div class="info-value">{{ ngo_name }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value">{{ ngo_phone }}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Coordinates</div>
+                            <div class="info-value">{{ "%.6f"|format(dropoff_lat) }}, {{ "%.6f"|format(dropoff_lng) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-truck"></i>
+                    <span>Assign Delivery Partner</span>
+                </div>
+
+                <!-- ✅ NEW: Auto-assignment info box -->
+                <div class="auto-assign-info">
+                    <h3>Auto-Assignment Coming Soon!</h3>
+                    <p>In the future, delivery partners will be automatically assigned from our partner delivery companies (Swiggy, Zomato, Porter, etc.). For now, please manually assign a driver below.</p>
+                </div>
+                
+                <form id="assignForm">
+                    <input type="hidden" id="donation_id" value="{{ donation_id }}">
+                    
+                    <!-- ✅ NEW: Delivery company selection (for future integration) -->
+                    <div class="form-group">
+                        <label for="delivery_company">Delivery Company/Partner *</label>
+                        <select id="delivery_company" required>
+                            <option value="">-- Select Delivery Company --</option>
+                            <option value="manual">Manual Assignment (Current)</option>
+                            <option value="swiggy" disabled>Swiggy Genie (Coming Soon)</option>
+                            <option value="zomato" disabled>Zomato (Coming Soon)</option>
+                            <option value="porter" disabled>Porter (Coming Soon)</option>
+                            <option value="dunzo" disabled>Dunzo (Coming Soon)</option>
+                            <option value="shadowfax" disabled>Shadowfax (Coming Soon)</option>
+                            <option value="delhivery" disabled>Delhivery (Coming Soon)</option>
+                            <option value="wefast" disabled>WeFast (Coming Soon)</option>
+                        </select>
+                        <small>
+                            🔔 API integrations with delivery partners will be added soon
+                        </small>
+                    </div>
+
+                    <!-- ✅ Driver details section (shown for manual assignment) -->
+                    <div id="manualAssignmentSection">
+                        <div class="form-group">
+                            <label for="driver_name">Driver Name *</label>
+                            <input type="text" id="driver_name" placeholder="Enter driver name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="driver_phone">Driver Phone *</label>
+                            <input type="tel" id="driver_phone" placeholder="Enter driver phone number" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vehicle_number">Vehicle Number *</label>
+                            <input type="text" id="vehicle_number" placeholder="e.g., MH-12-AB-1234" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="driver_rating">Driver Rating (Optional)</label>
+                            <input type="number" id="driver_rating" placeholder="4.5" step="0.1" min="1" max="5" value="4.5">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="submitBtn">
+                        Assign Driver & Confirm
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ✅ Handle delivery company selection
+        document.getElementById('delivery_company').addEventListener('change', function() {
+            const manualSection = document.getElementById('manualAssignmentSection');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (this.value === 'manual') {
+                manualSection.style.display = 'block';
+                submitBtn.textContent = 'Assign Driver & Confirm';
+            } else if (this.value === '') {
+                manualSection.style.display = 'none';
+            } else {
+                // Future: API integration with delivery companies
+                manualSection.style.display = 'none';
+                submitBtn.textContent = 'Request from ' + this.options[this.selectedIndex].text;
+            }
+        });
+
+        document.getElementById('assignForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const deliveryCompany = document.getElementById('delivery_company').value;
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Assigning...';
+
+            const data = {
+                donation_id: document.getElementById('donation_id').value,
+                delivery_company: deliveryCompany, // ✅ Store which company/method was used
+            };
+
+            // ✅ For manual assignment
+            if (deliveryCompany === 'manual') {
+                data.driver_name = document.getElementById('driver_name').value;
+                data.driver_phone = document.getElementById('driver_phone').value;
+                data.vehicle_number = document.getElementById('vehicle_number').value;
+                data.driver_rating = parseFloat(document.getElementById('driver_rating').value) || 4.5;
+                data.assignment_type = 'manual';
+            } else {
+                // ✅ Future: For API-based assignment
+                data.assignment_type = 'api';
+                data.api_provider = deliveryCompany;
+                // In future, this will call the respective delivery company's API
+            }
+
+            try {
+                const response = await fetch('/api/delivery/assign', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (deliveryCompany === 'manual') {
+                        alert('✅ Delivery partner assigned successfully!\n\nThe driver will contact both the donor and NGO shortly.');
+                    } else {
+                        alert('✅ Delivery request sent to ' + deliveryCompany + '!\n\nDriver details will be updated once assigned.');
+                    }
+                    submitBtn.textContent = '✅ Driver Assigned';
+                    submitBtn.style.background = 'linear-gradient(135deg, #06d6a0 0%, #05b888 100%)';
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Assign Driver & Confirm';
+            }
+        });
+    </script>
+</body>
+</html>

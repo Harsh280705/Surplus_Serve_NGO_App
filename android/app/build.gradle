@@ -1,0 +1,71 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def mapsApiKey = localProperties.getProperty('GOOGLE_MAPS_API_KEY')
+if (mapsApiKey == null) {
+    throw new FileNotFoundException("GOOGLE_MAPS_API_KEY not found in local.properties. Please add it.")
+}
+
+android {
+    namespace "com.example.surplus_serve"
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+
+        // Required for flutter_local_notifications (desugaring enabled)
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    defaultConfig {
+        applicationId "com.example.surplus_serve"
+        minSdk flutter.minSdkVersion
+        targetSdk flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: mapsApiKey
+        ]
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation "com.google.firebase:firebase-auth:23.0.0"
+    implementation "com.google.firebase:firebase-firestore:25.0.0"
+    implementation "androidx.annotation:annotation:1.9.1"
+
+    // Updated to required version for flutter_local_notifications
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+}

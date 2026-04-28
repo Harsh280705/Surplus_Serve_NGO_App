@@ -1,0 +1,196 @@
+flutter run  
+Launching lib\main.dart on sdk gphone64 x86 64 in debug mode...
+Running Gradle task 'assembleDebug'...                             32.3s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...        1,583ms
+D/FlutterJNI( 3735): Beginning load of flutter...
+D/FlutterJNI( 3735): flutter (null) was loaded normally!
+I/flutter ( 3735): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).
+D/FlutterGeolocator( 3735): Attaching Geolocator to activity
+D/FlutterGeolocator( 3735): Creating service.
+D/FlutterGeolocator( 3735): Binding to location service.
+D/FlutterGeolocator( 3735): Geolocator foreground service connected
+D/FlutterGeolocator( 3735): Initializing Geolocator services
+D/FlutterGeolocator( 3735): Flutter engine connected. Connected engine count 1
+Syncing files to device sdk gphone64 x86 64...                     174ms
+
+Flutter run key commands.
+r Hot reload.
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on sdk gphone64 x86 64 is available at: http://127.0.0.1:51569/aOdGpyKxs9w=/
+I/Choreographer( 3735): Skipped 78 frames!  The application may be doing too much work on its main thread.
+The Flutter DevTools debugger and profiler on sdk gphone64 x86 64 is available at: http://127.0.0.1:9101?uri=http://127.0.0.1:51569/aOdGpyKxs9w=/
+W/System  ( 3735): Ignoring header X-Firebase-Locale because its value was null.
+W/DynamiteModule( 3735): Local module descriptor class for com.google.android.gms.providerinstaller.dynamite not found.
+I/DynamiteModule( 3735): Considering local module com.google.android.gms.providerinstaller.dynamite:0 and remote module com.google.android.gms.providerinstaller.dynamite:0
+W/ProviderInstaller( 3735): Failed to load providerinstaller module: No acceptable module com.google.android.gms.providerinstaller.dynamite found. Local version is 0 and remote version is 0.
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e72018) locale list changing from [] to [en-US]
+D/ApplicationLoaders( 3735): Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+D/ApplicationLoaders( 3735): Returning zygote-cached class loader: /system/framework/com.android.media.remotedisplay.jar
+D/ApplicationLoaders( 3735): Returning zygote-cached class loader: /system/framework/com.android.location.provider.jar
+D/ApplicationLoaders( 3735): Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+D/ApplicationLoaders( 3735): Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+D/nativeloader( 3735): InitLlndkLibrariesProduct: libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libRS.so:libandroid_net.so:libapexsupport.so:libavf.so:libbinder_ndk.so:libc.so:libcgrouprc.so:libclang_rt.asan-x86_64-android.so:libcom.android.tethering.connectivity_native.so:libdl.so:libft2.so:liblog.so:libm.so:libmediandk.so:libnativewindow.so:libneuralnetworks.so:libselinux.so:libsync.so:libvendorsupport.so:libvndksupport.so:libvulkan.so
+D/nativeloader( 3735): Configuring product-clns-10 for unbundled product apk /product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk. target_sdk_version=36, uses_libraries=, library_path=/product/priv-app/PrebuiltGmsCore/lib/x86_64:/product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!/lib/x86_64:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms:/product/lib64:/system/product/lib64
+D/nativeloader( 3735): InitVndkspLibrariesProduct: VNDK is deprecated with product
+W/ProviderInstaller( 3735): Failed to report request stats: com.google.android.gms.common.security.ProviderInstallerImpl.reportRequestStats [class android.content.Context, long, long]
+D/nativeloader( 3735): Load /product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!/lib/x86_64/libconscrypt_gmscore_jni.so using class loader ns product-clns-10 (caller=/product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!classes3.dex): ok
+V/NativeCrypto( 3735): Registering com/google/android/gms/org/conscrypt/NativeCrypto's 308 native methods...
+I/e.surplus_serve( 3735): hiddenapi: Accessing hidden method Ldalvik/system/VMStack;->getStackClass2()Ljava/lang/Class; (runtime_flags=0, domain=core-platform, api=unsupported) from Lfipl; (domain=app) using reflection: allowed
+D/InsetsController( 3735): hide(ime(), fromIme=false)
+I/ImeTracker( 3735): com.example.surplus_serve:6c189d54: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+E/GoogleApiManager( 3735): Failed to get service from broker. 
+E/GoogleApiManager( 3735): java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+E/GoogleApiManager( 3735):      at android.os.Parcel.createExceptionOrNull(Parcel.java:3340)
+E/GoogleApiManager( 3735):      at android.os.Parcel.createException(Parcel.java:3324)
+E/GoogleApiManager( 3735):      at android.os.Parcel.readException(Parcel.java:3307)
+E/GoogleApiManager( 3735):      at android.os.Parcel.readException(Parcel.java:3249)
+E/GoogleApiManager( 3735):      at aslf.a(:com.google.android.gms@250734038@25.07.34 (260800-734679633):36)
+E/GoogleApiManager( 3735):      at asjm.z(:com.google.android.gms@250734038@25.07.34 (260800-734679633):143)
+E/GoogleApiManager( 3735):      at arqx.run(:com.google.android.gms@250734038@25.07.34 (260800-734679633):54)
+E/GoogleApiManager( 3735):      at android.os.Handler.handleCallback(Handler.java:995)
+E/GoogleApiManager( 3735):      at android.os.Handler.dispatchMessage(Handler.java:103)
+E/GoogleApiManager( 3735):      at bzda.mt(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+E/GoogleApiManager( 3735):      at bzda.dispatchMessage(:com.google.android.gms@250734038@25.07.34 (260800-734679633):5)
+E/GoogleApiManager( 3735):      at android.os.Looper.loopOnce(Looper.java:248)
+E/GoogleApiManager( 3735):      at android.os.Looper.loop(Looper.java:338)
+E/GoogleApiManager( 3735):      at android.os.HandlerThread.run(HandlerThread.java:85)
+W/CondFlagRegistrar( 3735): Failed to register com.google.android.gms.providerinstaller#com.google.android.gms
+W/CondFlagRegistrar( 3735): etic: 17: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null}
+W/CondFlagRegistrar( 3735):     at etie.a(:com.google.android.gms@250734038@25.07.34 (260800-734679633):13)
+W/CondFlagRegistrar( 3735):     at fngo.d(:com.google.android.gms@250734038@25.07.34 (260800-734679633):3)
+W/CondFlagRegistrar( 3735):     at fngq.run(:com.google.android.gms@250734038@25.07.34 (260800-734679633):130)
+W/CondFlagRegistrar( 3735):     at fniw.execute(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+W/CondFlagRegistrar( 3735):     at fnhg.h(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+W/CondFlagRegistrar( 3735):     at fnhg.l(:com.google.android.gms@250734038@25.07.34 (260800-734679633):101)
+W/CondFlagRegistrar( 3735):     at fnhg.p(:com.google.android.gms@250734038@25.07.34 (260800-734679633):19)
+W/CondFlagRegistrar( 3735):     at elzj.hJ(:com.google.android.gms@250734038@25.07.34 (260800-734679633):35)
+W/CondFlagRegistrar( 3735):     at eajo.run(:com.google.android.gms@250734038@25.07.34 (260800-734679633):14)
+W/CondFlagRegistrar( 3735):     at fniw.execute(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+W/CondFlagRegistrar( 3735):     at eajp.b(:com.google.android.gms@250734038@25.07.34 (260800-734679633):18)
+W/CondFlagRegistrar( 3735):     at eake.b(:com.google.android.gms@250734038@25.07.34 (260800-734679633):36)
+W/CondFlagRegistrar( 3735):     at eakg.d(:com.google.android.gms@250734038@25.07.34 (260800-734679633):25)
+W/CondFlagRegistrar( 3735):     at arof.c(:com.google.android.gms@250734038@25.07.34 (260800-734679633):9)
+W/CondFlagRegistrar( 3735):     at arqv.q(:com.google.android.gms@250734038@25.07.34 (260800-734679633):48)
+W/CondFlagRegistrar( 3735):     at arqv.d(:com.google.android.gms@250734038@25.07.34 (260800-734679633):10)
+W/CondFlagRegistrar( 3735):     at arqv.g(:com.google.android.gms@250734038@25.07.34 (260800-734679633):211)
+W/CondFlagRegistrar( 3735):     at arqv.onConnectionFailed(:com.google.android.gms@250734038@25.07.34 (260800-734679633):2)
+W/CondFlagRegistrar( 3735):     at arqx.run(:com.google.android.gms@250734038@25.07.34 (260800-734679633):82)
+W/CondFlagRegistrar( 3735):     at android.os.Handler.handleCallback(Handler.java:995)
+W/CondFlagRegistrar( 3735):     at android.os.Handler.dispatchMessage(Handler.java:103)
+W/CondFlagRegistrar( 3735):     at bzda.mt(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+W/CondFlagRegistrar( 3735):     at bzda.dispatchMessage(:com.google.android.gms@250734038@25.07.34 (260800-734679633):5)
+W/CondFlagRegistrar( 3735):     at android.os.Looper.loopOnce(Looper.java:248)
+W/CondFlagRegistrar( 3735):     at android.os.Looper.loop(Looper.java:338)
+W/CondFlagRegistrar( 3735):     at android.os.HandlerThread.run(HandlerThread.java:85)
+W/CondFlagRegistrar( 3735): Caused by: armx: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null}
+W/CondFlagRegistrar( 3735):     at asiy.a(:com.google.android.gms@250734038@25.07.34 (260800-734679633):15)
+W/CondFlagRegistrar( 3735):     at aroi.a(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+W/CondFlagRegistrar( 3735):     at arof.c(:com.google.android.gms@250734038@25.07.34 (260800-734679633):5)
+W/CondFlagRegistrar( 3735):     ... 12 more
+W/e.surplus_serve( 3735): Verification of void com.google.android.gms.common.internal.safeparcel.SafeParcelWriter.writeIBinderArray(android.os.Parcel, int, android.os.IBinder[], boolean) took 149.468ms (140.50 bytecodes/s) (0B arena alloc)
+D/FirebaseAuth( 3735): Notifying id token listeners about user ( EA5Nfqn93rYKgryQHz14dZzUam52 ).
+I/ethp    ( 3735): Unable to retrieve flag snapshot for com.google.android.gms.providerinstaller#com.google.android.gms, using defaults.
+I/e.surplus_serve( 3735): hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->getCurveName()Ljava/lang/String; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app) using reflection: allowed
+D/ProfileInstaller( 3735): Installing profile for com.example.surplus_serve
+I/ProviderInstaller( 3735): Installed default security provider GmsCore_OpenSSL
+W/e.surplus_serve( 3735): Verification of void com.google.common.base.Splitter.<init>(com.google.common.base.Splitter$Strategy) took 100.160ms (119.81 bytecodes/s) (0B arena alloc)
+I/e.surplus_serve( 3735): hiddenapi: Accessing hidden field Ljava/net/Socket;->impl:Ljava/net/SocketImpl; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app) using reflection: allowed
+I/e.surplus_serve( 3735): hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->setCurveName(Ljava/lang/String;)V (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app) using reflection: allowed
+D/MapsInitializer( 3735): preferredRenderer: null
+D/zzcc    ( 3735): preferredRenderer: null
+I/zzcc    ( 3735): Making Creator dynamically
+I/DynamiteModule( 3735): Considering local module com.google.android.gms.maps_core_dynamite:0 and remote module com.google.android.gms.maps_core_dynamite:203115000
+I/DynamiteModule( 3735): Selected remote version of com.google.android.gms.maps_core_dynamite, version >= 203115000
+V/DynamiteModule( 3735): Dynamite loader version >= 2, using loadModule2NoCrashUtils
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e8f7f8) locale list changing from [] to [en-US]
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e8acf8) locale list changing from [] to [en-US]
+D/zzcc    ( 3735): not early loading native code
+I/Google Maps Android API( 3735): Google Play services client version: 19020000
+I/Google Maps Android API( 3735): Google Play services package version: 250734038
+I/Google Maps Android API( 3735): Google Play services maps renderer version(legacy): 203115000
+D/MapsInitializer( 3735): loadedRenderer: LEGACY
+D/zzcc    ( 3735): preferredRenderer: null
+I/Google Maps Android API( 3735): Google Play services package version: 250734038
+I/Google Maps Android API( 3735): Google Play services maps renderer version(legacy): 203115000
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+I/e.surplus_serve( 3735): Background concurrent mark compact GC freed 9614KB AllocSpace bytes, 20(1520KB) LOS objects, 49% free, 5982KB/11MB, paused 2.249ms,4.973ms total 101.643ms
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+I/PlatformViewsController( 3735): Hosting view in a virtual display for platform view: 0
+I/PlatformViewsController( 3735): PlatformView is using SurfaceProducer backend
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e8a078) locale list changing from [] to [en-US]
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e8fb18) locale list changing from [] to [en-US]
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e77dd8) locale list changing from [] to [en-US]
+I/GoogleMapController( 3735): No TextureView found. Likely using the LEGACY renderer.
+I/bb      ( 3735): Successfully registered with Phenotype.
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/HWUI    ( 3735): Image decoding logging dropped!
+W/DynamiteModule( 3735): Local module descriptor class for com.google.android.gms.googlecertificates not found.
+I/DynamiteModule( 3735): Considering local module com.google.android.gms.googlecertificates:0 and remote module com.google.android.gms.googlecertificates:7
+I/DynamiteModule( 3735): Selected remote version of com.google.android.gms.googlecertificates, version >= 7
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e77ab8) locale list changing from [] to [en-US]
+I/e.surplus_serve( 3735): AssetManager2(0x72acc8e88a98) locale list changing from [] to [en-US]
+I/m.wv    ( 3735): Unable to retrieve flag snapshot for com.google.android.libraries.consentverifier#com.example.surplus_serve, using defaults.
+E/GoogleApiManager( 3735): Failed to get service from broker. 
+E/GoogleApiManager( 3735): java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+E/GoogleApiManager( 3735):      at android.os.Parcel.createExceptionOrNull(Parcel.java:3340)
+E/GoogleApiManager( 3735):      at android.os.Parcel.createException(Parcel.java:3324)
+E/GoogleApiManager( 3735):      at android.os.Parcel.readException(Parcel.java:3307)
+E/GoogleApiManager( 3735):      at android.os.Parcel.readException(Parcel.java:3249)
+E/GoogleApiManager( 3735):      at aslf.a(:com.google.android.gms@250734038@25.07.34 (260800-734679633):36)
+E/GoogleApiManager( 3735):      at asjm.z(:com.google.android.gms@250734038@25.07.34 (260800-734679633):143)
+E/GoogleApiManager( 3735):      at arqx.run(:com.google.android.gms@250734038@25.07.34 (260800-734679633):54)
+E/GoogleApiManager( 3735):      at android.os.Handler.handleCallback(Handler.java:995)
+E/GoogleApiManager( 3735):      at android.os.Handler.dispatchMessage(Handler.java:103)
+E/GoogleApiManager( 3735):      at bzda.mt(:com.google.android.gms@250734038@25.07.34 (260800-734679633):1)
+E/GoogleApiManager( 3735):      at bzda.dispatchMessage(:com.google.android.gms@250734038@25.07.34 (260800-734679633):5)
+E/GoogleApiManager( 3735):      at android.os.Looper.loopOnce(Looper.java:248)
+E/GoogleApiManager( 3735):      at android.os.Looper.loop(Looper.java:338)
+E/GoogleApiManager( 3735):      at android.os.HandlerThread.run(HandlerThread.java:85)
+I/Choreographer( 3735): Skipped 46 frames!  The application may be doing too much work on its main thread.
+I/HWUI    ( 3735): Davey! duration=785ms; Flags=0, FrameTimelineVsyncId=16213, IntendedVsync=442149123060, Vsync=442915789696, InputEventId=0, HandleInputStart=442922383400, AnimationStart=442922404600, PerformTraversalsStart=442922519800, DrawStart=442922660600, FrameDeadline=442165789726, FrameStartTime=442921918300, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=442922755500, SyncStart=442925357500, IssueDrawCommandsStart=442925436200, SwapBuffers=442926659100, FrameCompleted=442937637100, DequeueBufferDuration=5929200, QueueBufferDuration=3939800, GpuCompleted=442931518900, SwapBuffersCompleted=442937637100, DisplayPresentTime=0, CommandSubmissionCompleted=442926659100,

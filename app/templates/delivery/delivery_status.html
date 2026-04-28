@@ -1,0 +1,204 @@
+<!-- app/templates/delivery/delivery_status.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Status</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/delivery.css') }}">
+</head>
+<body>
+    <div class="delivery-container delivery-status-container">
+        
+        <!-- HEADER -->
+        <div class="status-header">
+            <h1>🚚 Delivery Tracking</h1>
+            <div id="statusBadge" class="status-badge"></div>
+        </div>
+
+        <!-- DONATION INFO -->
+        <div class="donation-info-card">
+            <div class="info-row">
+                <span class="label">Delivery Method:</span>
+                <span class="value" id="deliveryMethod">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Distance:</span>
+                <span class="value" id="distance">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Estimated Price:</span>
+                <span class="value" id="estimatedPrice">-</span>
+            </div>
+        </div>
+
+        <!-- STATUS TIMELINE -->
+        <div class="status-timeline" id="timeline">
+            <!-- Timeline will be populated dynamically -->
+        </div>
+
+        <!-- DETAILS SECTION -->
+        <div class="details-section" style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #ecf0f1;">
+            
+            <h3 style="margin-bottom: 16px;">Delivery Details</h3>
+            
+            <div class="info-row" style="justify-content: flex-start; margin-bottom: 12px;">
+                <span class="label" style="width: 150px;">Status:</span>
+                <span class="value" id="statusText" style="text-align: left;">-</span>
+            </div>
+            
+            <div class="info-row" style="justify-content: flex-start; margin-bottom: 12px;">
+                <span class="label" style="width: 150px;">Booked On:</span>
+                <span class="value" id="bookedAt" style="text-align: left;">-</span>
+            </div>
+            
+            <div class="info-row" style="justify-content: flex-start; margin-bottom: 0;">
+                <span class="label" style="width: 150px;">Delivered:</span>
+                <span class="value" id="deliveredAt" style="text-align: left;">-</span>
+            </div>
+
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="delivery-footer" style="gap: 12px; flex-direction: row;">
+            <button class="btn btn-primary btn-block" onclick="refreshStatus()" style="flex: 1;">
+                🔄 Refresh Status
+            </button>
+            <button class="btn btn-secondary" onclick="history.back()">
+                ← Back
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = '/api/delivery';
+        const donationId = new URLSearchParams(window.location.search).get('donationId') || 
+                          window.location.pathname.split('/').pop();
+        
+        let statusRefreshInterval;
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDeliveryStatus();
+            // Auto-refresh every 10 seconds
+            statusRefreshInterval = setInterval(loadDeliveryStatus, 10000);
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (statusRefreshInterval) clearInterval(statusRefreshInterval);
+        });
+
+        // LOAD DELIVERY STATUS
+        async function loadDeliveryStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status/${donationId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.error('Failed to load status:', result.error);
+                    return;
+                }
+
+                const data = result.data;
+                displayStatus(data);
+
+            } catch (error) {
+                console.error('Error loading status:', error);
+            }
+        }
+
+        // DISPLAY STATUS
+        function displayStatus(data) {
+            // Update main info
+            document.getElementById('deliveryMethod').textContent = 
+                data.method ? data.method.charAt(0).toUpperCase() + data.method.slice(1).replace('_', ' ') : '-';
+            document.getElementById('distance').textContent = 
+                data.distance ? `${data.distance.toFixed(1)} km` : '-';
+            document.getElementById('estimatedPrice').textContent = 
+                data.estimatedPrice ? `₹${data.estimatedPrice.toFixed(0)}` : 'Free';
+            document.getElementById('statusText').textContent = 
+                data.status.charAt(0).toUpperCase() + data.status.slice(1).replace('_', ' ');
+            
+            // Update badge
+            const badge = data.statusBadge;
+            const badgeEl = document.getElementById('statusBadge');
+            badgeEl.className = `status-badge ${data.status}`;
+            badgeEl.textContent = `${badge.icon} ${badge.label}`;
+            
+            // Update timeline
+            displayTimeline(data.timeline, data.status);
+            
+            // Update details
+            document.getElementById('bookedAt').textContent = 
+                formatDate(data.bookedAt) || 'Pending';
+            document.getElementById('deliveredAt').textContent = 
+                formatDate(data.deliveredAt) || 'Pending';
+        }
+
+        // DISPLAY TIMELINE
+        function displayTimeline(timeline, currentStatus) {
+            const timelineEl = document.getElementById('timeline');
+            timelineEl.innerHTML = '';
+
+            timeline.forEach((item, index) => {
+                const isActive = isStatusActive(item.status, currentStatus);
+                const isCompleted = isStatusCompleted(item.status, currentStatus);
+                
+                const itemEl = document.createElement('div');
+                itemEl.className = `timeline-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
+                
+                itemEl.innerHTML = `
+                    <div class="timeline-dot">
+                        ${isCompleted ? '✓' : item.step}
+                    </div>
+                    <div class="timeline-content">
+                        <h4>${item.label}</h4>
+                        <p>${getStatusDescription(item.status)}</p>
+                    </div>
+                `;
+                
+                timelineEl.appendChild(itemEl);
+            });
+        }
+
+        // UTILITY FUNCTIONS
+        function isStatusActive(step, current) {
+            const statusOrder = ['pending', 'booked', 'in_progress', 'delivered'];
+            return statusOrder.indexOf(step) === statusOrder.indexOf(current);
+        }
+
+        function isStatusCompleted(step, current) {
+            const statusOrder = ['pending', 'booked', 'in_progress', 'delivered'];
+            return statusOrder.indexOf(step) < statusOrder.indexOf(current);
+        }
+
+        function getStatusDescription(status) {
+            const descriptions = {
+                'pending': 'Waiting for you to select a delivery method',
+                'booked': 'Your delivery has been booked with the service provider',
+                'in_progress': 'Your food is on the way! Driver is delivering',
+                'delivered': 'Delivery completed! Food has been received'
+            };
+            return descriptions[status] || '';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            return date.toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function refreshStatus() {
+            loadDeliveryStatus();
+        }
+    </script>
+
+</body>
+</html>
