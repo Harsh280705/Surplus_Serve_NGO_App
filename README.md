@@ -2,7 +2,7 @@
 
 A real-time food redistribution platform that connects event organizers, donors, and NGOs to reduce food waste and help communities in need.
 
----
+----
 
 ## 🚨 Problem
 
