@@ -104,3 +104,14 @@ python app.py
 👥 Team & Contribution
 
 This project was developed in a team of 4.
+
+Usage Notice
+
+This project is intended for educational and non-commercial use only.
+
+You are free to use, modify, and learn from this project. However:
+
+Commercial use, resale, or monetization of this project is not permitted.
+Proper credit must be given to the original authors.
+
+If you wish to use this project for commercial purposes, please contact the authors for permission.
