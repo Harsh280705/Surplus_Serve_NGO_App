@@ -13,7 +13,7 @@ A real-time food redistribution platform that connects event organizers, donors,
 
 ## 🚨 Problem
 
-Large amounts of food are wasted at weddings, events, and restaurants, while many people still lack access to proper meals.
+Large amounts of food are wasted at weddings, events, parties and restaurants, while many people still lack access to proper meals.
 
 There is no efficient real-time system to connect food donors with NGOs for quick distribution.
 
